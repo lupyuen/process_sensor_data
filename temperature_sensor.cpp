@@ -16,7 +16,7 @@ void temperature_sensor_setup()  ////
     ////Serial.begin(9600);
 }
  
-void temperature_sensor_loop()  ////
+float temperature_sensor_loop()  ////
 {
     int a = analogRead(pinTempSensor );
  
@@ -29,6 +29,7 @@ void temperature_sensor_loop()  ////
     Serial.println(temperature);
  
     ////delay(100);
+    return temperature;
 }
 
 

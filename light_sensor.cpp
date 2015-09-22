@@ -18,7 +18,7 @@ void light_sensor_setup()
     ////Serial.begin(9600);                //Start the Serial connection
     ////pinMode(ledPin,OUTPUT);            //Set the LED on Digital 12 as an OUTPUT
 }
-void light_sensor_loop() 
+int light_sensor_loop() 
 {
     int sensorValue = analogRead(LIGHT_SENSOR); 
     Rsensor = (float)(1023-sensorValue)*10/sensorValue;
@@ -27,4 +27,5 @@ void light_sensor_loop()
     Serial.println(sensorValue);
     ////Serial.println("the sensor resistance is ");
     ////Serial.println(Rsensor,DEC);//show the ligth intensity on the serial monitor;
+    return sensorValue;
 }

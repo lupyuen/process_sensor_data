@@ -26,9 +26,9 @@ void loop() {
   delay(1000);  //  Wait for a second between iterations.
 
   //  Read sensor data and send to the cloud.  Activate actuators if requested by the cloud.
-  temperature_sensor_loop();
-  light_sensor_loop();
-  send_data_loop();
+  float temperature_sensor_value = temperature_sensor_loop();
+  int light_sensor_value = light_sensor_loop();
+  send_data_loop(temperature_sensor_value, light_sensor_value);
   Serial.println("End Loop");
 }
 
