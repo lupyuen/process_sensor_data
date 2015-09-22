@@ -10,8 +10,7 @@
 
 //  This is a long-lasting TCP socket connection to receive actuation commands from the cloud.
 #define SERVER_IP "AzureIoTService.cloudapp.net"
-#define SERVER_PORT "2012"
-
+#define SERVER_PORT 2012
 /*
 Make sure you have a file named password.h containing the lines:
 #define WIFI_SSID "yourwifissid"
@@ -67,18 +66,16 @@ char devicekey[] = "mydevicekey";
 LWiFiClient c;
 LWiFiClient c2;
 char connection_info[21]="                    ";
-char port[] = SERVER_PORT;
 char ip[] = SERVER_IP;  
-int portnum;
+int portnum = SERVER_PORT;
 int val = 0;
-String tcpdata;
 String tcpcmd_led_on;
 String tcpcmd_led_off;
 String upload_led;
+String hello;
 HttpClient http(c2);
 int state = 0;
 int i = 0;
-
 
 void fatal_error(const char* str)
 {
@@ -88,83 +85,12 @@ void fatal_error(const char* str)
 }
 
 // ==============================================================
-// Call MCS API to get TCP Socket connection information
-
-void getconnectInfo(){
-  //calling RESTful API to get TCP socket connection
-  //  TODO: Remove hardcoded group and device.
-  String url = "GET /?Group=" + String(GROUP) + "&Device=" + String(DEVICE) + " HTTP/1.1";
-  Serial.println(url);
-  c2.println(url);  
-  c2.print("Host: ");
-  c2.print(SITE_URL); c2.print(":"); c2.println(SITE_PORT);  
-  c2.println("Connection: close");
-  c2.println();
-  
-  delay(500);
-
-  int errorcount = 0;
-  while (!c2.available())
-  {
-    Serial.println("waiting HTTP response: ");
-    Serial.println(errorcount);
-    errorcount += 1;
-    if (errorcount > 10) {
-      c2.stop();
-      return;
-    }
-    delay(100);
-  }
-  int err = http.skipResponseHeaders();
-
-  int bodyLen = http.contentLength();
-  Serial.print("Content length is: ");
-  Serial.println(bodyLen);
-  Serial.println();
-  char c;
-  int ipcount = 0;
-  int count = 0;
-  int separater = 0;
-  while (c2)
-  {
-    int v = c2.read();
-    if (v != -1)
-    {
-      c = v;
-      Serial.print(c);
-      //  TODO
-      //connection_info[ipcount]=c; ////
-      if(c==',')
-      separater=ipcount;
-      ipcount++;    
-    }
-    else
-    {
-      Serial.println("no more content, disconnect");
-      c2.stop();
-
-    }
-    
-  }
-  Serial.print("The connection info: ");
-  Serial.println(connection_info);
-
-  Serial.println("The TCP Socket connection instructions:");
-  Serial.print("IP: ");
-  Serial.println(ip);
-  Serial.print("Port: ");
-  Serial.println(port);
-  portnum = atoi (port);
-
-} //getconnectInfo
-
-// ==============================================================
 // TCP Socket server connection functions
 
 void connectTCP(){
   //establish TCP connection with TCP Server with designate IP and Port
   c.stop();
-  Serial.println("Connecting to TCP");
+  Serial.println("Connecting to TCP socket for receiving actuation commands...");
   Serial.print("IP: "); Serial.println(ip);  
   Serial.print("Port: "); Serial.println(portnum);  
   while (0 == c.connect(ip, portnum))
@@ -173,45 +99,38 @@ void connectTCP(){
     delay(1000);
   }  
   //  Tell the server our group ID and device ID.
-  Serial.println("send TCP connect");
-  String hello = "HELLO " + String(GROUP) + " " + String(DEVICE);
+  Serial.println("Connected to TCP socket for receiving actuation commands");
+  hello = "HELLO " + String(GROUP) + " " + String(DEVICE);
+  Serial.print(">>> "); Serial.println(hello);
   c.println(hello);
-  c.println();
-  Serial.println("waiting TCP response:");
-  Serial.println("Connected..");  
+  Serial.println("Waiting for TCP response...");
 } //connectTCP
 
 void heartBeat(){
-  Serial.println("send TCP heartBeat");
-  c.println(tcpdata);
-  c.println();
-    
+  Serial.println("Sending TCP heartBeat...");
+  Serial.print(">>> "); Serial.println(hello);
+  c.println(hello);    
 } //heartBeat
 
-// ==============================================================
-// MCS API call functions
-
 void senddata(float temperature_sensor_value, int light_sensor_value) {
-  Serial.println("Begin of senddata");
-  Serial.println("1");
+  Serial.println("Sending sensor data to cloud...");
   char buffer1[5];
   sprintf(buffer1, "%.2f", temperature_sensor_value);
-  Serial.println("2");
 
   LWiFiClient c2;
   unsigned long t1 = millis();
-  Serial.print("Connecting to "); Serial.print(SITE_URL); Serial.print(":"); Serial.println(SITE_PORT);
+  Serial.print("Connecting to "); Serial.print(SITE_URL); Serial.print(" port "); Serial.print(SITE_PORT); Serial.println("...");
   while (0 == c2.connect(SITE_URL, SITE_PORT))  
   {
-    Serial.println("Re-Connecting to WebSite");
+    Serial.println("Reconnecting to cloud REST server...");
     delay(1000);
   }
 
   delay(500);
-  Serial.println("send POST request");
+  Serial.println("Sending POST request to cloud REST server...");
   String url = "POST /RecordSensorData.aspx?Group=" + String(GROUP) + "&Device=" + String(DEVICE) + 
     "&Temperature=" + String(buffer1) + "&LightLevel=" + String(light_sensor_value) + " HTTP/1.1";
-  Serial.println(url);  
+  Serial.print(">>> "); Serial.println(url);  
   c2.println(url);  
   c2.print("Host: ");
   c2.print(SITE_URL); c2.print(":"); c2.println(SITE_PORT);  
@@ -221,15 +140,14 @@ void senddata(float temperature_sensor_value, int light_sensor_value) {
   c2.println("Content-Type: text/csv");
   c2.println("Connection: close");
   c2.println();
-  //c2.println(data);
 
   String dataget = "";
-  Serial.println("waiting HTTP response:");
+  Serial.println("Waiting for HTTP response...");
 
   int errorcount = 0;
   while (!c2.available())
   {
-    Serial.println("waiting HTTP response:");
+    Serial.println("Waiting for HTTP response...");
     errorcount += 1;
     if (errorcount > 10) {
       c2.stop();
@@ -248,11 +166,11 @@ void senddata(float temperature_sensor_value, int light_sensor_value) {
     }
     else
     {
-      Serial.println("no more content, disconnect");
+      Serial.println("No more content, disconnecting...");
       c2.stop();
     }
   }
-  Serial.println("\r\nData uploaded");  
+  Serial.println("\r\nSensor data sent to cloud");  
   delay(300);
   unsigned long t2 = millis();
 }
@@ -264,43 +182,37 @@ void send_data_setup() {
   LTask.begin();
   LWiFi.begin();
   //while(!Serial) delay(1000); //mark this demo as standalone
-  Serial.println("Connecting to AP");
+  Serial.println("Connecting to WiFi access point...");
   Serial.println(ssid);  
   Serial.println(key);  
   while (0 == LWiFi.connect(ssid, LWiFiLoginInfo(WIFI_AUTH, key))){
     Serial.print(".");  
     delay(1000);
   }
-  Serial.println("AP Connected");  
+  Serial.println("WiFi Connected");  
   delay(100);
-  Serial.print("LED is set to LOW");
+  Serial.println("LED is set to LOW");
   LDateTime.getRtc(&lrtc);
   LDateTime.getRtc(&lrtc2);
   while (!c2.connect(SITE_URL, SITE_PORT)){  
-    Serial.println("Re-Connecting to WebSite");
+    Serial.println("Reconnecting to cloud REST server...");
     delay(1000);
   }
   delay(100);
-  tcpdata = String(deviceid) + "," + String(devicekey) + ",0";
-  tcpcmd_led_on = "led on";
-  tcpcmd_led_off = "led off";
-  getconnectInfo();
   connectTCP();
 }
 
-
 void send_data_loop(float temperature_sensor_value, int light_sensor_value) {
   if (LWiFi.status() == LWIFI_STATUS_DISCONNECTED) {
-    Serial.println("Disconnected from AP");
+    Serial.println("Disconnected from WiFi");
     while (0 == LWiFi.connect(ssid, LWiFiLoginInfo(WIFI_AUTH, key))){
-      Serial.println("Connecting to AP");
+      Serial.println("Connecting to WiFi...");
       delay(1000);
     }
 
   }
   LDateTime.getRtc(&rtc);
   if ((rtc - lrtc) >= per) {
-    Serial.println("Senddata");
      senddata(temperature_sensor_value, light_sensor_value);
     lrtc = rtc;
   }
@@ -314,11 +226,13 @@ void send_data_loop(float temperature_sensor_value, int light_sensor_value) {
         Serial.print((char)v);
         tcpcmd += (char)v;
         if (tcpcmd.indexOf("led on") >= 0) {
-          Serial.println("Switch LED ON ");  
+          Serial.print("Received actuator command: "); Serial.println(tcpcmd);  
+          Serial.println("Switching LED ON...");  
           led_on();  
           tcpcmd="";
         }else if(tcpcmd.indexOf("led off") >= 0) {  
-          Serial.println("Switch LED OFF");  
+          Serial.print("Received actuator command: "); Serial.println(tcpcmd);  
+          Serial.println("Switching LED OFF...");  
           led_off();  
           tcpcmd="";
         }
