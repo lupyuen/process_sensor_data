@@ -40,40 +40,28 @@ Make sure you have a file named password.h containing the lines:
 // ================================================
 // Global variable
 
-const unsigned char OSS = 0;  // Oversampling Setting
-// Calibration values
-int16_t ac1;
-int16_t ac2;
-int16_t ac3;
-uint16_t ac4;
-uint16_t ac5;
-uint16_t ac6;
-int16_t b1;
-int16_t b2;
-int16_t mb;
-int16_t mc;
-int16_t md;
+//  For networking.
+char ssid[] = WIFI_SSID;
+char key[] = WIFI_KEY;  
+char ip[] = SERVER_IP;  
+int portnum = SERVER_PORT;
+LWiFiClient c;
+LWiFiClient c2;
+HttpClient http(c2);
+char connection_info[21]="                    ";
+
+//  This is the Hello message ("HELLO 1 2"), used by the LinkIt ONE to specify the group ID and device ID upon startup.
+//  The Hello message is also sent periodically by the LinkIt ONE to keep the TCP connection alive with the server.
+String hello;
+
+//  For real-time clock.
 unsigned int rtc;
 unsigned int lrtc;
 unsigned int lrtc2;
 unsigned int rtc2;
 unsigned int rtc1;
 unsigned int lrtc1;
-char ssid[] = WIFI_SSID;
-char key[] = WIFI_KEY;  
-char deviceid[] = "mydeviceid";  
-char devicekey[] = "mydevicekey";  
-LWiFiClient c;
-LWiFiClient c2;
-char connection_info[21]="                    ";
-char ip[] = SERVER_IP;  
-int portnum = SERVER_PORT;
 int val = 0;
-String tcpcmd_led_on;
-String tcpcmd_led_off;
-String upload_led;
-String hello;
-HttpClient http(c2);
 int state = 0;
 int i = 0;
 
@@ -88,14 +76,14 @@ void fatal_error(const char* str)
 // TCP Socket server connection functions
 
 void connectTCP(){
-  //establish TCP connection with TCP Server with designate IP and Port
+  //  Connect to the TCP server to establish a channel for the cloud to send actuation commands to the LinkIt ONE.
   c.stop();
   Serial.println("Connecting to TCP socket for receiving actuation commands...");
   Serial.print("IP: "); Serial.println(ip);  
   Serial.print("Port: "); Serial.println(portnum);  
   while (0 == c.connect(ip, portnum))
   {
-    Serial.println("Re-Connecting to TCP");    
+    Serial.println("Re-connecting to TCP socket...");    
     delay(1000);
   }  
   //  Tell the server our group ID and device ID.
@@ -107,16 +95,20 @@ void connectTCP(){
 } //connectTCP
 
 void heartBeat(){
+  //  The Hello message is sent periodically by the LinkIt ONE to keep the TCP connection alive with the server.
   Serial.println("Sending TCP heartBeat...");
   Serial.print(">>> "); Serial.println(hello);
   c.println(hello);    
 } //heartBeat
 
 void senddata(float temperature_sensor_value, int light_sensor_value) {
+  //  Send the sensor values to the cloud.
+  //  TODO: Send a dictionary of <key, value> strings instead.
   Serial.println("Sending sensor data to cloud...");
   char buffer1[5];
   sprintf(buffer1, "%.2f", temperature_sensor_value);
 
+  //  Open a connection to the HTTP port (usually port 80).
   LWiFiClient c2;
   unsigned long t1 = millis();
   Serial.print("Connecting to "); Serial.print(SITE_URL); Serial.print(" port "); Serial.print(SITE_PORT); Serial.println("...");
@@ -125,18 +117,20 @@ void senddata(float temperature_sensor_value, int light_sensor_value) {
     Serial.println("Reconnecting to cloud REST server...");
     delay(1000);
   }
-
   delay(500);
+
+  //  Send a HTTP POST command to transmit the sensor values.
+  //  TODO: May need to do URL encoding of the sensor values if they contain special characters.
   Serial.println("Sending POST request to cloud REST server...");
   String url = "POST /RecordSensorData.aspx?Group=" + String(GROUP) + "&Device=" + String(DEVICE) + 
     "&Temperature=" + String(buffer1) + "&LightLevel=" + String(light_sensor_value) + " HTTP/1.1";
   Serial.print(">>> "); Serial.println(url);  
   c2.println(url);  
+  //  Send the other HTTP request headers, according to the HTTP specifications.
   c2.print("Host: ");
   c2.print(SITE_URL); c2.print(":"); c2.println(SITE_PORT);  
   c2.print("Content-Length: ");
   c2.println(0); 
-  //c2.println(thisLength);
   c2.println("Content-Type: text/csv");
   c2.println("Connection: close");
   c2.println();
